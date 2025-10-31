@@ -1,0 +1,31 @@
+{
+  "type": "module",
+  "scripts": {
+    "start": "serve -l 3000",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@hashgraph/sdk": "^2.74.0",
+    "@langchain/core": "^0.3.78",
+    "@langchain/groq": "^0.2.4",
+    "@tailwindcss/postcss": "^4.1.16",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "groq-sdk": "^0.33.0",
+    "hedera-agent-kit": "^3.3.0",
+    "langchain": "^0.3.36",
+    "node-fetch": "^3.3.2",
+    "serve": "^14.2.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.14",
+    "vite": "^7.1.10"
+  }
+}

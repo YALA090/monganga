@@ -1,0 +1,1980 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MONGANGA - Sauvons des vies</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+    <!-- SDK Hedera pour la gestion de la base de données -->
+    <script src="node_modules/@hashgraph/sdk/dist/umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#003d52',
+                        'primary-light': '#004d66',
+                        'primary-dark': '#002d3d'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chat-message {
+            animation: fadeInUp 0.3s ease-out;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .typing-indicator {
+            animation: pulse 1.5s infinite;
+        }
+        .file-upload-area {
+            transition: all 0.3s ease;
+        }
+        .file-upload-area:hover {
+            border-color: #003d52;
+            background-color: rgba(0, 61, 82, 0.05);
+        }
+        .dark .file-upload-area:hover {
+            background-color: rgba(0, 61, 82, 0.15);
+        }
+        .pulse-ring {
+            animation: pulse-ring 2s infinite;
+        }
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.33);
+            }
+            80%, 100% {
+                opacity: 0;
+            }
+        }
+        .dark input, .dark textarea, .dark select {
+            color: white !important;
+        }
+        .dark input::placeholder, .dark textarea::placeholder {
+            color: #9CA3AF !important;
+        }
+        .history-item {
+            transition: all 0.3s ease;
+        }
+        .history-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="h-full bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Language Selection -->
+    <div class="fixed top-4 right-4 z-50">
+        <select id="languageSelect" class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-gray-900 dark:text-white">
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+            <option value="sw">Kiswahili</option>
+            <option value="ln">Lingala</option>
+        </select>
+    </div>
+
+    <!-- Welcome Page -->
+    <div id="welcomePage" class="min-h-screen flex items-center justify-center px-4">
+        <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
+            <div class="mb-8">
+                <div class="w-40 h-40 flex items-center justify-center mx-auto mb-4">
+                    <img src="image/logo.png" alt="Logo MONGANGA" class="w-40 h-40">
+                </div>
+                <h1 class="text-3xl font-bold text-primary dark:text-white mb-2">MONGANGA</h1>
+                <p class="text-gray-600 dark:text-gray-400 font-medium" data-translate="slogan">Sauvons des vies</p>
+				<div class="heartbeat-container">
+					<svg viewBox="0 0 500 100" class="heartbeat-svg">
+						<path class="heartbeat-line" d="M0 50 H100 L110 30 L120 70 L130 50 L180 50 C200 10, 240 10, 250 40 S280 90, 300 50 L350 50 L360 30 L370 70 L380 50 H500"></path>
+					</svg>
+				</div>
+				<style>
+					.heartbeat-container {
+						width: 80%;
+						max-width: 600px;
+						margin: 0 auto;
+						overflow: hidden; /* Ensure nothing overflows */
+					}
+
+					.heartbeat-line {
+						stroke: #003d52; /* Primary color */
+						stroke-width: 1.5;
+						fill: none;
+						stroke-dasharray: 500;
+						stroke-dashoffset: 500;
+						animation: dash 2s linear infinite;
+					}
+
+					@keyframes dash {
+						from {
+							stroke-dashoffset: 500;
+						}
+						to {
+							stroke-dashoffset: 0;
+						}
+					}
+				</style>
+            </div>
+            
+            <div id="welcomeMessage" class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4" data-translate="welcome">Bienvenu(e) pour rencontrer MONGANGA</h2>
+                <p class="text-gray-600 dark:text-gray-400" data-translate="welcome_desc">Votre assistant médical intelligent pour vous aider avec vos consultations</p>
+            </div>
+
+            <div class="space-y-4">
+                <button id="startBtn" class="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200" data-translate="start">
+                    Créer un compte
+                </button>
+                
+                <button id="loginBtn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200" data-translate="have_account">
+                    J'ai déjà un compte
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="hidden min-h-screen flex items-center justify-center px-4">
+        <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
+            <div class="mb-6 text-center">
+                <div class="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                    <img src="image/logo.png" alt="Logo MONGANGA" class="w-20 h-20">
+                </div>
+                <h2 class="text-2xl font-bold text-primary dark:text-white mb-2" data-translate="login">Connexion</h2>
+                <p class="text-gray-600 dark:text-gray-400" data-translate="login_desc">Connectez-vous à votre compte MONGANGA</p>
+            </div>
+
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-translate="email">Adresse email</label>
+                    <input type="email" id="loginEmail" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-translate="password">Mot de passe</label>
+                    <input type="password" id="loginPassword" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" required>
+                </div>
+
+                <button type="submit" class="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200" data-translate="connect">
+                    Se connecter
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <button id="backToWelcomeBtn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm" data-translate="back_welcome">
+                    Retour à l'accueil
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration Form -->
+    <div id="registrationPage" class="hidden min-h-screen flex items-center justify-center px-4">
+        <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
+            <div class="mb-6 text-center">
+				<div class="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                    <img src="image/logo.png" alt="Logo MONGANGA" class="w-20 h-20">
+                </div>
+                <h2 class="text-2xl font-bold text-primary dark:text-white mb-2" data-translate="registration">Inscription</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                        <span data-translate="step">Étape</span> <span id="currentStep">1</span>/6
+                    </div>
+                    <div class="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+                        <div id="progressBar" class="h-2 bg-primary rounded-full transition-all duration-300" style="width: 16.67%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="registrationForm">
+                <!-- Step 1: Name -->
+                <div id="step1" class="registration-step">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-translate="name">Nom complet</label>
+                    <input type="text" id="userName" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" required>
+                </div>
+
+                <!-- Step 2: Email -->
+                <div id="step2" class="registration-step hidden">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-translate="email">Adresse email</label>
+                    <input type="email" id="userEmail" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" required>
+                </div>
+
+                <!-- Step 3: Phone -->
+                <div id="step3" class="registration-step hidden">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-translate="phone">Numéro de téléphone</label>
+                    <input type="tel" id="userPhone" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" required>
+                </div>
+
+                <!-- Step 4: Personal Info -->
+                <div id="step4" class="registration-step hidden">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-translate="age">Âge</label>
+                            <input type="number" id="userAge" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" min="1" max="120" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-translate="gender">Sexe</label>
+                            <select id="userGender" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" required>
+                                <option value="" data-translate="select_gender">Sélectionner</option>
+                                <option value="male" data-translate="male">Homme</option>
+                                <option value="female" data-translate="female">Femme</option>
+                                <option value="other" data-translate="other">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-translate="weight">Poids (kg)</label>
+                            <input type="number" id="userWeight" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" min="1" max="500" step="0.1" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Password -->
+                <div id="step5" class="registration-step hidden">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-translate="password">Mot de passe</label>
+                            <input type="password" id="userPassword" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" minlength="6" required>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" data-translate="password_help">Minimum 6 caractères</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-translate="confirm_password">Confirmer le mot de passe</label>
+                            <input type="password" id="userPasswordConfirm" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Summary -->
+                <div id="step6" class="registration-step hidden">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4" data-translate="summary">Résumé de vos informations</h3>
+                    <div id="userSummary" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-2 text-sm">
+                        <!-- Summary will be populated here -->
+                    </div>
+                </div>
+
+                <div class="flex justify-between mt-6">
+                    <button type="button" id="prevBtn" class="hidden px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors" data-translate="previous">
+                        Précédent
+                    </button>
+                    <button type="button" id="nextBtn" class="ml-auto bg-primary hover:bg-primary-dark text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200" data-translate="next">
+                        Suivant
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" class="hidden min-h-screen">
+        <!-- Header -->
+        <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center">
+                        <img src="image/logo.png" alt="Logo MONGANGA" class="w-10 h-10 mr-3">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-3">
+                            <h1 class="text-lg font-semibold text-primary dark:text-white">MONGANGA</h1>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span id="userGreeting" class="text-sm text-gray-600 dark:text-gray-400"></span>
+                        <button id="logoutBtn" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" data-translate="logout">
+                            Déconnexion
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="bg-primary dark:bg-primary-dark">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex space-x-8">
+                    <button class="nav-tab active text-white py-3 px-4 border-b-2 border-white" data-page="consultation" data-translate="consultation">
+                        Consultation
+                    </button>
+                    <button class="nav-tab text-blue-200 hover:text-white py-3 px-4 border-b-2 border-transparent hover:border-blue-200" data-page="diagnosis" data-translate="diagnosis">
+                        Diagnostic
+                    </button>
+                    <button class="nav-tab text-blue-200 hover:text-white py-3 px-4 border-b-2 border-transparent hover:border-blue-200" data-page="history" data-translate="history">
+                        Historique
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Consultation Page -->
+        <div id="consultationPage" class="page-content">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+                    <!-- Consultation Header -->
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4" data-translate="consultation_title">
+                            Comment puis-je vous aider aujourd'hui ?
+                        </h2>
+                        <p class="text-gray-600 dark:text-gray-400" data-translate="consultation_desc">
+                            Choisissez votre mode de consultation
+                        </p>
+                    </div>
+
+                    <!-- Consultation Options -->
+                    <div id="consultationOptions" class="text-center">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-xl p-6">
+                                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-semibold text-primary dark:text-blue-300 mb-2" data-translate="guided_consultation">Consultation Guidée</h3>
+                                <p class="text-gray-600 dark:text-gray-400 mb-4 text-sm" data-translate="guided_desc">Je vous pose des questions une par une pour établir un diagnostic précis</p>
+                                <button id="startGuidedBtn" class="bg-primary hover:bg-primary-dark text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200">
+                                    <span data-translate="start_guided">Commencer l'entretien</span>
+                                </button>
+                            </div>
+
+                            <div class="bg-emerald-50 dark:bg-emerald-900 border border-emerald-200 dark:border-emerald-700 rounded-xl p-6">
+                                <div class="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-semibold text-emerald-700 dark:text-emerald-300 mb-2" data-translate="auto_diagnosis">Diagnostic Auto</h3>
+                                <p class="text-gray-600 dark:text-gray-400 mb-4 text-sm" data-translate="auto_desc">Décrivez tous vos symptômes d'un coup pour un diagnostic immédiat</p>
+                                <button id="startAutoBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200">
+                                    <span data-translate="start_auto">Diagnostic rapide</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consultation Progress -->
+                    <div id="consultationProgress" class="hidden mb-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Progression de la consultation</span>
+                            <span class="text-sm font-medium text-primary dark:text-blue-400"><span id="progressCount">0</span>/10</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div id="consultationProgressBar" class="bg-primary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Guided Consultation Interface -->
+                    <div id="guidedConsultation" class="hidden">
+                        <div id="chatMessages" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 h-80 overflow-y-auto mb-4 space-y-4">
+                            <!-- Messages will be populated here -->
+                        </div>
+
+                        <!-- Current Question -->
+                        <div id="currentQuestion" class="bg-blue-50 dark:bg-blue-900 border-l-4 border-primary p-4 mb-4 hidden">
+                            <h4 class="font-medium text-primary dark:text-blue-300 mb-2">Question actuelle :</h4>
+                            <p id="questionText" class="text-gray-800 dark:text-gray-200"></p>
+                        </div>
+
+                        <!-- Quick Response Options -->
+                        <div id="quickResponses" class="mb-4 hidden">
+                            <div class="flex flex-wrap gap-2">
+                                <!-- Quick response buttons will be populated here -->
+                            </div>
+                        </div>
+
+                        <!-- File Upload for Lab Results -->
+                        <div id="labUploadSection" class="hidden mb-4">
+                            <div class="bg-amber-50 dark:bg-amber-900 border-l-4 border-amber-500 p-4 mb-4">
+                                <h4 class="font-medium text-amber-800 dark:text-amber-300 mb-2">Examens de laboratoire recommandés :</h4>
+                                <p id="recommendedTests" class="text-amber-700 dark:text-amber-300 text-sm mb-3"></p>
+                                <p class="text-amber-600 dark:text-amber-400 text-sm">Veuillez télécharger vos résultats si vous les avez :</p>
+                            </div>
+                            
+                            <div class="file-upload-area border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer">
+                                <input type="file" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" class="hidden">
+                                <svg class="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <p class="text-gray-600 dark:text-gray-400 mb-2">Téléchargez vos résultats d'analyses</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">PDF, Images (JPG, PNG, WebP)</p>
+                                <button type="button" class="mt-2 text-primary hover:text-primary-dark font-medium">
+                                    Parcourir les fichiers
+                                </button>
+                            </div>
+                            
+                            <div id="uploadedFiles" class="mt-4 space-y-2">
+                                <!-- Uploaded files will be shown here -->
+                            </div>
+                            
+                            <div class="flex justify-center mt-4">
+                                <button id="skipLabTestsBtn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm underline">
+                                    Je n'ai pas d'examens / Continuer sans analyses
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Message Input -->
+                        <div id="messageInputSection" class="flex space-x-2">
+                            <input type="text" id="messageInput" class="flex-1 px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" placeholder="Tapez votre réponse...">
+                            <button id="sendMessageBtn" class="bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-lg transition-colors duration-200">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Auto Diagnosis Interface -->
+                    <div id="autoDiagnosisInterface" class="hidden">
+                        <div class="bg-emerald-50 dark:bg-emerald-900 border-l-4 border-emerald-500 p-4 mb-6">
+                            <h4 class="font-medium text-emerald-800 dark:text-emerald-300 mb-2">Diagnostic Automatique</h4>
+                            <p class="text-emerald-700 dark:text-emerald-300 text-sm">
+                                Décrivez tous vos symptômes en détail. Plus vous donnez d'informations, plus le diagnostic sera précis.
+                            </p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Décrivez vos symptômes en détail :
+                                </label>
+                                <textarea id="autoSymptomsInput" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white h-32" placeholder="Ex: J'ai mal à la tête depuis 3 jours, de la fièvre de 38.5°C, des nausées..."></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Durée des symptômes :</label>
+                                    <select id="symptomDuration" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white">
+                                        <option value="">Sélectionner</option>
+                                        <option value="moins-24h">Moins de 24h</option>
+                                        <option value="1-3-jours">1-3 jours</option>
+                                        <option value="1-semaine">Une semaine</option>
+                                        <option value="plus-semaine">Plus d'une semaine</option>
+                                        <option value="chronique">Chronique (plus d'un mois)</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Intensité (1-10) :</label>
+                                    <input type="range" id="symptomIntensity" min="1" max="10" value="5" class="w-full">
+                                    <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        <span>Léger</span>
+                                        <span id="intensityValue">5</span>
+                                        <span>Sévère</span>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Température (°C) :</label>
+                                    <input type="number" id="bodyTemperature" step="0.1" min="35" max="45" class="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:text-white" placeholder="37.0">
+                                </div>
+                            </div>
+
+                            <div class="flex justify-center">
+                                <button id="generateAutoDiagnosisBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 px-8 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105">
+                                    <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                    </svg>
+                                    Générer le diagnostic
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Diagnosis Page -->
+        <div id="diagnosisPage" class="page-content hidden">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6" data-translate="diagnosis_title">
+                        Diagnostic et Recommandations
+                    </h2>
+                    
+                    <div id="diagnosisContent" class="prose dark:prose-invert max-w-none">
+                        <div class="text-center py-12">
+                            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p class="text-gray-500 dark:text-gray-400" data-translate="no_diagnosis">
+                                Aucun diagnostic disponible. Veuillez d'abord effectuer une consultation.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Page -->
+        <div id="historyPage" class="page-content hidden">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white" data-translate="history_title">
+                            Historique des Diagnostics
+                        </h2>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                            <span id="historyCount">0</span> diagnostic(s) trouvé(s)
+                        </div>
+                    </div>
+                    
+                    <div id="historyContent" class="space-y-4">
+                        <div id="emptyHistory" class="text-center py-12">
+                            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p class="text-gray-500 dark:text-gray-400" data-translate="no_history">
+                                Aucun diagnostic dans l'historique. Effectuez une consultation pour commencer.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loadingModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p class="text-gray-700 dark:text-gray-300" data-translate="analyzing">Analyse en cours...</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration Groq API avec Hedera AI Agent
+        const GROQ_CONFIG = {
+            apiKey: 'your_groq_api_key_here',
+            endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+            model: 'llama-3.1-8b-instant'
+        };
+
+        // Configuration Hedera AI Agent
+        const HEDERA_AGENT_CONFIG = {
+            enabled: true,
+            systemPrompt: `Vous êtes MONGANGA, un assistant médical professionnel spécialisé dans le diagnostic et les recommandations de traitement.
+
+VOTRE RÔLE :
+- Assistant médical expert avec connaissances approfondies en médecine générale
+- Capacité d'analyse symptomatique avancée
+- Recommandations de traitement personnalisées et sécuritaires
+- Communication claire et empathique
+
+COMPÉTENCES SPÉCIALISÉES :
+1. Diagnostic différentiel basé sur les symptômes
+2. Recommandations de médicaments avec posologies précises
+3. Conseils de suivi médical personnalisés
+4. Éducation du patient sur sa condition
+5. Identification des situations d'urgence
+
+DIRECTIVES IMPORTANTES :
+- TOUJOURS adapter les dosages à l'âge et au poids du patient
+- PRÉCISER les horaires de prise des médicaments
+- EXPLIQUER clairement pourquoi chaque traitement est recommandé
+- METTRE EN GARDE des effets secondaires potentiels
+- RECOMMANDER de consulter un médecin en présentiel pour confirmation
+- IDENTIFIER les signes d'urgence nécessitant une attention immédiate
+
+FORMAT DE RÉPONSE :
+Structurez systématiquement vos réponses avec :
+1. Diagnostic probable avec niveau de confiance
+2. Traitement médicamenteux détaillé (nom, posologie, durée)
+3. Conseils complémentaires (repos, hydratation, etc.)
+4. Signes d'alerte nécessitant une réévaluation
+5. Recommandations de suivi
+
+GARDEZ TOUJOURS à l'esprit que vous assistez un professionnel de santé, ne remplacez pas une consultation en personne.`
+        };
+
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        // Enhanced translations with history
+        const translations = {
+            fr: {
+                slogan: "Sauvons des vies",
+                welcome: "Bienvenu(e) pour rencontrer MONGANGA",
+                welcome_desc: "Votre assistant médical intelligent pour vous aider avec vos consultations",
+                start: "Créer un compte",
+                have_account: "J'ai déjà un compte",
+                login: "Connexion",
+                login_desc: "Connectez-vous à votre compte MONGANGA",
+                connect: "Se connecter",
+                back_welcome: "Retour à l'accueil",
+                registration: "Inscription",
+                step: "Étape",
+                name: "Nom complet",
+                email: "Adresse email",
+                phone: "Numéro de téléphone",
+                age: "Âge",
+                gender: "Sexe",
+                weight: "Poids (kg)",
+                password: "Mot de passe",
+                confirm_password: "Confirmer le mot de passe",
+                password_help: "Minimum 6 caractères",
+                select_gender: "Sélectionner",
+                male: "Homme",
+                female: "Femme",
+                other: "Autre",
+                summary: "Résumé de vos informations",
+                previous: "Précédent",
+                next: "Suivant",
+                confirm: "Confirmer",
+                consultation: "Consultation",
+                diagnosis: "Diagnostic",
+                history: "Historique",
+                consultation_title: "Comment puis-je vous aider aujourd'hui ?",
+                consultation_desc: "Choisissez votre mode de consultation",
+                guided_consultation: "Consultation Guidée",
+                guided_desc: "Je vous pose des questions une par une pour établir un diagnostic précis",
+                auto_diagnosis: "Diagnostic Auto",
+                auto_desc: "Décrivez tous vos symptômes d'un coup pour un diagnostic immédiat",
+                start_guided: "Commencer l'entretien",
+                start_auto: "Diagnostic rapide",
+                diagnosis_title: "Diagnostic et Recommandations",
+                history_title: "Historique des Diagnostics",
+                no_diagnosis: "Aucun diagnostic disponible. Veuillez d'abord effectuer une consultation.",
+                no_history: "Aucun diagnostic dans l'historique. Effectuez une consultation pour commencer.",
+                analyzing: "Analyse en cours...",
+                logout: "Déconnexion",
+                view_details: "Voir les détails",
+                delete: "Supprimer",
+                consultation_type: "Type de consultation",
+                date: "Date",
+                symptoms: "Symptômes principaux",
+                guided: "Guidée",
+                auto: "Automatique"
+            },
+            en: {
+                slogan: "Save lives",
+                welcome: "Welcome to meet MONGANGA",
+                welcome_desc: "Your intelligent medical assistant to help with your consultations",
+                start: "Create account",
+                have_account: "I already have an account",
+                login: "Login",
+                login_desc: "Connect to your MONGANGA account",
+                connect: "Connect",
+                back_welcome: "Back to home",
+                registration: "Registration",
+                step: "Step",
+                name: "Full name",
+                email: "Email address",
+                phone: "Phone number",
+                age: "Age",
+                gender: "Gender",
+                weight: "Weight (kg)",
+                password: "Password",
+                confirm_password: "Confirm password",
+                password_help: "Minimum 6 characters",
+                select_gender: "Select",
+                male: "Male",
+                female: "Female",
+                other: "Other",
+                summary: "Summary of your information",
+                previous: "Previous",
+                next: "Next",
+                confirm: "Confirm",
+                consultation: "Consultation",
+                diagnosis: "Diagnosis",
+                history: "History",
+                consultation_title: "How can I help you today?",
+                consultation_desc: "Choose your consultation mode",
+                guided_consultation: "Guided Consultation",
+                guided_desc: "I'll ask you questions one by one to establish a precise diagnosis",
+                auto_diagnosis: "Auto Diagnosis",
+                auto_desc: "Describe all your symptoms at once for immediate diagnosis",
+                start_guided: "Start interview",
+                start_auto: "Quick diagnosis",
+                diagnosis_title: "Diagnosis and Recommendations",
+                history_title: "Diagnosis History",
+                no_diagnosis: "No diagnosis available. Please conduct a consultation first.",
+                no_history: "No diagnosis in history. Conduct a consultation to start.",
+                analyzing: "Analyzing...",
+                logout: "Logout",
+                view_details: "View details",
+                delete: "Delete",
+                consultation_type: "Consultation type",
+                date: "Date",
+                symptoms: "Main symptoms",
+                guided: "Guided",
+                auto: "Auto"
+            },
+            sw: {
+                slogan: "Tuokoe maisha",
+                welcome: "Karibu kukutana na MONGANGA",
+                welcome_desc: "Msaidizi wako wa kiafya mwenye akili ili kukusaidia na mashauriano yako",
+                start: "Tengeneza akaunti",
+                have_account: "Nina akaunti tayari",
+                login: "Kuingia",
+                login_desc: "Ingia kwenye akaunti yako ya MONGANGA",
+                connect: "Ingia",
+                back_welcome: "Rudi nyumbani",
+                registration: "Usajili",
+                step: "Hatua",
+                name: "Jina kamili",
+                email: "Anwani ya barua pepe",
+                phone: "Nambari ya simu",
+                age: "Umri",
+                gender: "Jinsia",
+                weight: "Uzito (kg)",
+                password: "Nywila",
+                confirm_password: "Thibitisha nywila",
+                password_help: "Angalau herufi 6",
+                select_gender: "Chagua",
+                male: "Mwanaume",
+                female: "Mwanamke",
+                other: "Nyingine",
+                summary: "Muhtasari wa habari zako",
+                previous: "Awali",
+                next: "Ifuatayo",
+                confirm: "Thibitisha",
+                consultation: "Shauri",
+                diagnosis: "Utambuzi",
+                history: "Historia",
+                consultation_title: "Ninawezaje kukusaidia leo?",
+                consultation_desc: "Chagua jinsi ya kushauriana",
+                guided_consultation: "Mashauriano ya Uongozaji",
+                guided_desc: "Nitakuuliza maswali moja baada ya jingine ili kutambua tatizo kwa usahihi",
+                auto_diagnosis: "Utambuzi wa Kiotomatiki",
+                auto_desc: "Eleza dalili zako zote kwa pamoja kwa utambuzi wa haraka",
+                start_guided: "Anza mahojiano",
+                start_auto: "Utambuzi wa haraka",
+                diagnosis_title: "Utambuzi na Mapendekezo",
+                history_title: "Historia ya Matambuzi",
+                no_diagnosis: "Hakuna utambuzi unapatikana. Tafadhali fanya shauri kwanza.",
+                no_history: "Hakuna utambuzi katika historia. Fanya shauri kuanza.",
+                analyzing: "Inachanganua...",
+                logout: "Toka",
+                view_details: "Angalia maelezo",
+                delete: "Futa",
+                consultation_type: "Aina ya mashauriano",
+                date: "Tarehe",
+                symptoms: "Dalili kuu",
+                guided: "Uongozaji",
+                auto: "Kiotomatiki"
+            },
+            ln: {
+                slogan: "Tobikisa bomoi",
+                welcome: "Boyei na bokutani na MONGANGA",
+                welcome_desc: "Mosungi na yo ya monganga na mayele mpo na kosunga yo na matuna na yo",
+                start: "Sala compte",
+                have_account: "Nazali na compte",
+                login: "Kokota",
+                login_desc: "Kota na compte na yo ya MONGANGA",
+                connect: "Kota",
+                back_welcome: "Zonga na accueil",
+                registration: "Bokomi",
+                step: "Litambe",
+                name: "Nkombo mobimba",
+                email: "Adrese ya email",
+                phone: "Nimero ya telefone",
+                age: "Mibu",
+                gender: "Libota",
+                weight: "Kilo",
+                password: "Mot de passe",
+                confirm_password: "Ndima mot de passe",
+                password_help: "Nsuka 6 elaka",
+                select_gender: "Pona",
+                male: "Mobali",
+                female: "Mwasi",
+                other: "Mosusu",
+                summary: "Bokuse ya makambo na yo",
+                previous: "Liboso",
+                next: "Oyo elandi",
+                confirm: "Ndima",
+                consultation: "Lotuna",
+                diagnosis: "Boyebi",
+                history: "Mokolo",
+                consultation_title: "Ndenge nini nakoki kosalisa yo lelo?",
+                consultation_desc: "Pona lolenge ya kotuna",
+                guided_consultation: "Lotuna ya bokambi",
+                guided_desc: "Nakotuna yo mituna moko na moko mpo na koyeba malamu nini ezali kosala yo",
+                auto_diagnosis: "Boyebi ya lombangu",
+                auto_desc: "Limbolela bilembo na yo nyonso mpo na boyebi ya lombangu",
+                start_guided: "Bandela kotuna",
+                start_auto: "Boyebi ya lombangu",
+                diagnosis_title: "Boyebi mpe Toli",
+                history_title: "Mokolo ya Boyebi",
+                no_diagnosis: "Boyebi ezali te. Liboso sala lotuna.",
+                no_history: "Boyebi ezali te na mokolo. Sala lotuna mpo na koyeba.",
+                analyzing: "Ezali ko talela...",
+                logout: "Longwa",
+                view_details: "Tala ndimbola",
+                delete: "Longola",
+                consultation_type: "Lolenge ya lotuna",
+                date: "Mokolo",
+                symptoms: "Bilembo minene",
+                guided: "Bokambi",
+                auto: "Lombangu"
+            }
+        };
+
+        let currentLanguage = 'fr';
+        let currentStep = 1;
+        let userData = {};
+        let users = [];
+        let isLoggedIn = false;
+        let diagnosisResult = null;
+        let userHistory = [];
+
+        // Consultation state
+        let consultationState = {
+            currentQuestion: 0,
+            questions: [],
+            responses: [],
+            symptomsCollected: {},
+            labTestsRequested: false,
+            labResultsUploaded: false,
+            readyForDiagnosis: false,
+            consultationType: null
+        };
+
+        // Enhanced medical questions
+        const medicalQuestions = [
+            {
+                text: "Quel est votre symptôme principal qui vous inquiète le plus ?",
+                type: "text",
+                required: true,
+                category: "chief_complaint"
+            },
+            {
+                text: "Depuis combien de temps ressentez-vous ces symptômes ?",
+                type: "choice",
+                options: ["Moins de 24h", "1-3 jours", "1 semaine", "Plus d'une semaine", "Plus d'un mois"],
+                category: "duration"
+            },
+            {
+                text: "Sur une échelle de 1 à 10, comment évalueriez-vous l'intensité de votre douleur/inconfort ?",
+                type: "scale",
+                min: 1,
+                max: 10,
+                category: "intensity"
+            },
+            {
+                text: "Avez-vous de la fièvre ? Si oui, quelle est votre température corporelle ?",
+                type: "text",
+                category: "fever"
+            },
+            {
+                text: "Avez-vous des nausées ou des vomissements ?",
+                type: "choice",
+                options: ["Oui, fréquemment", "Oui, parfois", "Non"],
+                category: "nausea"
+            },
+            {
+                text: "Ressentez-vous des maux de tête ?",
+                type: "choice",
+                options: ["Oui, très fort", "Oui, modéré", "Léger", "Non"],
+                category: "headache"
+            },
+            {
+                text: "Avez-vous de la fatigue ou vous sentez-vous faible ?",
+                type: "choice",
+                options: ["Oui, très fatigué(e)", "Oui, un peu fatigué(e)", "Non, je me sens normal(e)"],
+                category: "fatigue"
+            },
+            {
+                text: "Avez-vous des problèmes digestifs (diarrhée, constipation, douleurs abdominales) ?",
+                type: "choice",
+                options: ["Oui, diarrhée", "Oui, constipation", "Oui, douleurs abdominales", "Non"],
+                category: "digestive"
+            },
+            {
+                text: "Prenez-vous actuellement des médicaments ou avez-vous des allergies connues ?",
+                type: "text",
+                category: "medications"
+            },
+            {
+                text: "Y a-t-il d'autres symptômes importants que vous aimeriez mentionner ?",
+                type: "text",
+                required: false,
+                category: "additional"
+            }
+        ];
+
+        // Hedera AI Agent Function via Groq
+        async function generateWithHederaAgent(prompt, context = '') {
+            showLoadingModal();
+            
+            try {
+                const fullPrompt = `${context}\n\n${prompt}`;
+                
+                const response = await fetch(GROQ_CONFIG.endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${GROQ_CONFIG.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: GROQ_CONFIG.model,
+                        messages: [
+                            {
+                                role: "system",
+                                content: HEDERA_AGENT_CONFIG.systemPrompt
+                            },
+                            {
+                                role: "user",
+                                content: fullPrompt
+                            }
+                        ],
+                        max_tokens: 4096,
+                        temperature: 0.7,
+                        top_p: 0.9,
+                        stream: false
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Erreur API: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                
+                if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                    throw new Error('Réponse API invalide - structure de données incorrecte');
+                }
+                
+                return data.choices[0].message.content;
+                
+            } catch (error) {
+                console.error('Erreur Hedera AI Agent:', error);
+                throw new Error(`Erreur lors de la consultation médicale: ${error.message}`);
+            } finally {
+                hideLoadingModal();
+            }
+        }
+
+        // Initialize app
+        function initApp() {
+            setupEventListeners();
+            updateLanguage();
+        }
+
+        function setupEventListeners() {
+            // Language selection
+            document.getElementById('languageSelect').addEventListener('change', function(e) {
+                currentLanguage = e.target.value;
+                updateLanguage();
+            });
+
+            // Welcome page buttons
+            document.getElementById('startBtn').addEventListener('click', showRegistration);
+            document.getElementById('loginBtn').addEventListener('click', showLogin);
+
+            // Login system
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('backToWelcomeBtn').addEventListener('click', showWelcome);
+
+            // Registration
+            document.getElementById('nextBtn').addEventListener('click', handleNextStep);
+            document.getElementById('prevBtn').addEventListener('click', handlePrevStep);
+
+            // Navigation
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const page = this.dataset.page;
+                    showPage(page);
+                    updateActiveTab(this);
+                    
+                    if (page === 'history') {
+                        loadHistory();
+                    }
+                });
+            });
+
+            // Consultation options
+            document.getElementById('startGuidedBtn').addEventListener('click', startGuidedConsultation);
+            document.getElementById('startAutoBtn').addEventListener('click', startAutoDiagnosis);
+
+            // Guided consultation
+            document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            // Auto diagnosis
+            document.getElementById('symptomIntensity').addEventListener('input', function() {
+                document.getElementById('intensityValue').textContent = this.value;
+            });
+            document.getElementById('generateAutoDiagnosisBtn').addEventListener('click', generateAutoDiagnosis);
+
+            // File upload
+            document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+            document.querySelector('.file-upload-area').addEventListener('click', function() {
+                document.getElementById('fileInput').click();
+            });
+
+            document.getElementById('skipLabTestsBtn').addEventListener('click', proceedToDiagnosis);
+
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+        }
+
+        function updateLanguage() {
+            const elements = document.querySelectorAll('[data-translate]');
+            elements.forEach(element => {
+                const key = element.dataset.translate;
+                if (translations[currentLanguage] && translations[currentLanguage][key]) {
+                    element.textContent = translations[currentLanguage][key];
+                }
+            });
+        }
+
+        function showWelcome() {
+            hideAllPages();
+            document.getElementById('welcomePage').classList.remove('hidden');
+        }
+
+        function showLogin() {
+            hideAllPages();
+            document.getElementById('loginPage').classList.remove('hidden');
+        }
+
+        function showRegistration() {
+            hideAllPages();
+            document.getElementById('registrationPage').classList.remove('hidden');
+        }
+
+        function showMainApp() {
+            hideAllPages();
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            if (userData.name) {
+                document.getElementById('userGreeting').textContent = `Bonjour, ${userData.name}`;
+            }
+        }
+
+        function hideAllPages() {
+            document.getElementById('welcomePage').classList.add('hidden');
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('registrationPage').classList.add('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            // Simulate user authentication
+            const user = users.find(u => u.email === email && u.password === password);
+            
+            if (user) {
+                userData = user;
+                isLoggedIn = true;
+                
+                // Load user history from localStorage
+                const savedHistory = localStorage.getItem(`monganga_history_${user.email}`);
+                if (savedHistory) {
+                    userHistory = JSON.parse(savedHistory);
+                }
+                
+                showMainApp();
+                showCustomAlert('Connexion réussie ! Bienvenue ' + user.name, 'success');
+            } else {
+                showCustomAlert('Email ou mot de passe incorrect', 'error');
+            }
+        }
+
+        function handleNextStep() {
+            if (validateCurrentStep()) {
+                if (currentStep < 6) {
+                    currentStep++;
+                    updateRegistrationStep();
+                } else {
+                    completeRegistration();
+                }
+            }
+        }
+
+        function handlePrevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateRegistrationStep();
+            }
+        }
+
+        function validateCurrentStep() {
+            switch (currentStep) {
+                case 1:
+                    const name = document.getElementById('userName').value.trim();
+                    if (!name) {
+                        showCustomAlert('Veuillez entrer votre nom');
+                        return false;
+                    }
+                    userData.name = name;
+                    break;
+                case 2:
+                    const email = document.getElementById('userEmail').value.trim();
+                    if (!email || !email.includes('@')) {
+                        showCustomAlert('Veuillez entrer une adresse email valide');
+                        return false;
+                    }
+                    // Check if email already exists
+                    if (users.find(u => u.email === email)) {
+                        showCustomAlert('Cette adresse email est déjà utilisée');
+                        return false;
+                    }
+                    userData.email = email;
+                    break;
+                case 3:
+                    const phone = document.getElementById('userPhone').value.trim();
+                    if (!phone) {
+                        showCustomAlert('Veuillez entrer votre numéro de téléphone');
+                        return false;
+                    }
+                    userData.phone = phone;
+                    break;
+                case 4:
+                    const age = document.getElementById('userAge').value;
+                    const gender = document.getElementById('userGender').value;
+                    const weight = document.getElementById('userWeight').value;
+                    
+                    if (!age || !gender || !weight) {
+                        showCustomAlert('Veuillez remplir tous les champs requis');
+                        return false;
+                    }
+                    
+                    userData.age = age;
+                    userData.gender = gender;
+                    userData.weight = weight;
+                    break;
+                case 5:
+                    const password = document.getElementById('userPassword').value;
+                    const confirmPassword = document.getElementById('userPasswordConfirm').value;
+                    
+                    if (!password || password.length < 6) {
+                        showCustomAlert('Le mot de passe doit contenir au moins 6 caractères');
+                        return false;
+                    }
+                    
+                    if (password !== confirmPassword) {
+                        showCustomAlert('Les mots de passe ne correspondent pas');
+                        return false;
+                    }
+                    
+                    userData.password = password;
+                    break;
+            }
+            return true;
+        }
+
+        function updateRegistrationStep() {
+            // Hide all steps
+            document.querySelectorAll('.registration-step').forEach(step => {
+                step.classList.add('hidden');
+            });
+
+            // Show current step
+            document.getElementById(`step${currentStep}`).classList.remove('hidden');
+
+            // Update progress
+            document.getElementById('currentStep').textContent = currentStep;
+            document.getElementById('progressBar').style.width = `${(currentStep / 6) * 100}%`;
+
+            // Update buttons
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            if (currentStep === 1) {
+                prevBtn.classList.add('hidden');
+            } else {
+                prevBtn.classList.remove('hidden');
+            }
+
+            if (currentStep === 6) {
+                nextBtn.textContent = translations[currentLanguage].confirm || 'Confirmer';
+                showSummary();
+            } else {
+                nextBtn.textContent = translations[currentLanguage].next || 'Suivant';
+            }
+        }
+
+        function showSummary() {
+            const summaryDiv = document.getElementById('userSummary');
+            summaryDiv.innerHTML = `
+                <div class="text-gray-800 dark:text-gray-200"><strong>Nom :</strong> ${userData.name}</div>
+                <div class="text-gray-800 dark:text-gray-200"><strong>Email :</strong> ${userData.email}</div>
+                <div class="text-gray-800 dark:text-gray-200"><strong>Téléphone :</strong> ${userData.phone}</div>
+                <div class="text-gray-800 dark:text-gray-200"><strong>Âge :</strong> ${userData.age} ans</div>
+                <div class="text-gray-800 dark:text-gray-200"><strong>Sexe :</strong> ${userData.gender}</div>
+                <div class="text-gray-800 dark:text-gray-200"><strong>Poids :</strong> ${userData.weight} kg</div>
+                <div class="text-gray-800 dark:text-gray-200"><strong>Mot de passe :</strong> ••••••••</div>
+            `;
+        }
+
+        function completeRegistration() {
+            // Add user to users array (simulate database)
+            users.push(userData);
+            isLoggedIn = true;
+            showMainApp();
+            showCustomAlert('Inscription réussie ! Bienvenue ' + userData.name, 'success');
+            
+            // Reset registration form
+            currentStep = 1;
+            document.getElementById('registrationForm').reset();
+        }
+
+        function showPage(pageName) {
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.add('hidden');
+            });
+            document.getElementById(`${pageName}Page`).classList.remove('hidden');
+        }
+
+        function updateActiveTab(activeTab) {
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active', 'text-white', 'border-white');
+                tab.classList.add('text-blue-200', 'border-transparent');
+            });
+            activeTab.classList.add('active', 'text-white', 'border-white');
+            activeTab.classList.remove('text-blue-200', 'border-transparent');
+        }
+
+        function startGuidedConsultation() {
+            document.getElementById('consultationOptions').classList.add('hidden');
+            document.getElementById('guidedConsultation').classList.remove('hidden');
+            document.getElementById('consultationProgress').classList.remove('hidden');
+            
+            // Initialize consultation
+            consultationState.questions = [...medicalQuestions];
+            consultationState.currentQuestion = 0;
+            consultationState.responses = [];
+            consultationState.consultationType = 'guided';
+            
+            askNextQuestion();
+        }
+
+        function startAutoDiagnosis() {
+            document.getElementById('consultationOptions').classList.add('hidden');
+            document.getElementById('autoDiagnosisInterface').classList.remove('hidden');
+            consultationState.consultationType = 'auto';
+        }
+
+        function askNextQuestion() {
+            if (consultationState.currentQuestion >= consultationState.questions.length) {
+                checkLabTestsNeeded();
+                return;
+            }
+
+            const question = consultationState.questions[consultationState.currentQuestion];
+            
+            updateConsultationProgress();
+            showCurrentQuestion(question);
+            addMessage('monganga', question.text);
+            
+            if (question.type === 'choice') {
+                showQuickResponses(question.options);
+            } else if (question.type === 'scale') {
+                showScaleResponse(question);
+            }
+        }
+
+        function showCurrentQuestion(question) {
+            const currentQuestionDiv = document.getElementById('currentQuestion');
+            const questionText = document.getElementById('questionText');
+            
+            questionText.textContent = question.text;
+            currentQuestionDiv.classList.remove('hidden');
+        }
+
+        function showQuickResponses(options) {
+            const quickResponsesDiv = document.getElementById('quickResponses');
+            const container = quickResponsesDiv.querySelector('div');
+            
+            container.innerHTML = '';
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded-lg hover:bg-primary hover:text-white transition-colors duration-200 text-sm';
+                button.textContent = option;
+                button.onclick = () => selectQuickResponse(option);
+                container.appendChild(button);
+            });
+            
+            quickResponsesDiv.classList.remove('hidden');
+        }
+
+        function showScaleResponse(question) {
+            const quickResponsesDiv = document.getElementById('quickResponses');
+            const container = quickResponsesDiv.querySelector('div');
+            
+            container.innerHTML = `
+                <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-lg p-4">
+                    <input type="range" id="scaleInput" min="${question.min}" max="${question.max}" value="${Math.floor((question.min + question.max) / 2)}" class="w-full">
+                    <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        <span>${question.min}</span>
+                        <span id="scaleValue">${Math.floor((question.min + question.max) / 2)}</span>
+                        <span>${question.max}</span>
+                    </div>
+                    <button onclick="selectScaleResponse()" class="mt-3 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors duration-200">
+                        Confirmer
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('scaleInput').addEventListener('input', function() {
+                document.getElementById('scaleValue').textContent = this.value;
+            });
+            
+            quickResponsesDiv.classList.remove('hidden');
+        }
+
+        function selectQuickResponse(response) {
+            document.getElementById('quickResponses').classList.add('hidden');
+            addMessage('user', response);
+            
+            const currentQuestion = consultationState.questions[consultationState.currentQuestion];
+            consultationState.responses.push({
+                question: currentQuestion.text,
+                answer: response,
+                category: currentQuestion.category
+            });
+            
+            consultationState.currentQuestion++;
+            setTimeout(() => {
+                askNextQuestion();
+            }, 1000);
+        }
+
+        function selectScaleResponse() {
+            const scaleValue = document.getElementById('scaleInput').value;
+            selectQuickResponse(scaleValue);
+        }
+
+        function updateConsultationProgress() {
+            const progress = Math.min((consultationState.currentQuestion / consultationState.questions.length) * 100, 100);
+            document.getElementById('consultationProgressBar').style.width = `${progress}%`;
+            document.getElementById('progressCount').textContent = consultationState.currentQuestion;
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+
+            document.getElementById('quickResponses').classList.add('hidden');
+            document.getElementById('currentQuestion').classList.add('hidden');
+
+            addMessage('user', message);
+            messageInput.value = '';
+
+            if (consultationState.currentQuestion < consultationState.questions.length) {
+                const currentQuestion = consultationState.questions[consultationState.currentQuestion];
+                consultationState.responses.push({
+                    question: currentQuestion.text,
+                    answer: message,
+                    category: currentQuestion.category
+                });
+                
+                consultationState.currentQuestion++;
+                setTimeout(() => {
+                    askNextQuestion();
+                }, 1000);
+            }
+        }
+
+        function checkLabTestsNeeded() {
+            const symptoms = consultationState.responses;
+            let testsNeeded = [];
+            
+            const feverResponse = symptoms.find(s => s.category === 'fever');
+            const digestiveResponse = symptoms.find(s => s.category === 'digestive');
+            const fatigueResponse = symptoms.find(s => s.category === 'fatigue');
+            const intensityResponse = symptoms.find(s => s.category === 'intensity');
+            
+            if (feverResponse && (feverResponse.answer.toLowerCase().includes('oui') || feverResponse.answer.includes('38') || feverResponse.answer.includes('39'))) {
+                testsNeeded.push('Analyse de sang complète (NFS)', 'Test de protéine C-réactive (CRP)', 'Hémoculture');
+            }
+            
+            if (digestiveResponse && digestiveResponse.answer.toLowerCase().includes('oui')) {
+                testsNeeded.push('Analyse de selles', 'Test sanguin pour les enzymes hépatiques (ALAT, ASAT)');
+            }
+            
+            if (fatigueResponse && fatigueResponse.answer.toLowerCase().includes('très')) {
+                testsNeeded.push('Test de thyroïde (TSH)', 'Dosage de la vitamine B12', 'Taux de fer sérique');
+            }
+            
+            if (intensityResponse && parseInt(intensityResponse.answer) >= 7) {
+                testsNeeded.push('Radiographie', 'Échographie selon la zone douloureuse');
+            }
+            
+            if (testsNeeded.length > 0) {
+                showLabTestsRequest(testsNeeded);
+            } else {
+                proceedToDiagnosis();
+            }
+        }
+
+        function showLabTestsRequest(tests) {
+            document.getElementById('recommendedTests').textContent = tests.join(', ');
+            document.getElementById('labUploadSection').classList.remove('hidden');
+            consultationState.labTestsRequested = true;
+            
+            addMessage('monganga', `Basé sur vos symptômes, je recommande les examens suivants : ${tests.join(', ')}. Si vous avez ces résultats, veuillez les télécharger pour un diagnostic plus précis. Sinon, vous pouvez continuer sans analyses.`);
+        }
+
+        function proceedToDiagnosis() {
+            consultationState.readyForDiagnosis = true;
+            document.getElementById('labUploadSection').classList.add('hidden');
+            
+            generateFinalDiagnosis();
+        }
+
+        async function generateFinalDiagnosis() {
+            const userInfo = `Âge: ${userData.age} ans, Sexe: ${userData.gender}, Poids: ${userData.weight} kg`;
+            const symptomsText = consultationState.responses.map(r => `${r.question}: ${r.answer}`).join('\n');
+            
+            const context = `CONSULTATION MÉDICALE AVEC AGENT HEDERA AI
+Patient: ${userData.name}
+${userInfo}
+Consultation réalisée le: ${new Date().toLocaleDateString()}
+Type de consultation: ${consultationState.consultationType === 'guided' ? 'Consultation guidée' : 'Diagnostic automatique'}
+
+ANALYSES DISPONIBLES: ${consultationState.labResultsUploaded ? 'Résultats de laboratoire fournis' : 'Aucune analyse fournie'}
+
+SYMPTÔMES RAPPORTÉS:
+${symptomsText}`;
+
+            const prompt = `En tant qu'agent médical Hedera AI spécialisé, analysez cette consultation et fournissez un diagnostic complet :
+
+INFORMATIONS PATIENT :
+- Nom: ${userData.name}
+- ${userInfo}
+
+HISTORIQUE SYMPTOMATIQUE :
+${symptomsText}
+
+EXAMENS COMPLÉMENTAIRES :
+${consultationState.labResultsUploaded ? 'Résultats de laboratoire disponibles' : 'Aucun examen complémentaire disponible'}
+
+Veuillez fournir une analyse médicale structurée incluant :
+
+🔍 **ANALYSE DIAGNOSTIQUE**
+- Diagnostic principal avec probabilité
+- Diagnostics différentiels à considérer
+- Facteurs de risque identifiés
+
+💊 **STRATÉGIE THÉRAPEUTIQUE PERSONNALISÉE**
+Pour chaque traitement recommandé, précisez :
+- Nom du médicament (générique et commercial)
+- Mécanisme d'action pertinent pour les symptômes
+- Posologie adaptée à ${userData.age} ans et ${userData.weight} kg
+- Horaire précis des prises (ex: "1 comprimé à 8h et 20h")
+- Durée du traitement
+- Interactions médicamenteuses potentielles
+
+🎯 **JUSTIFICATION THÉRAPEUTIQUE**
+- Pourquoi ce traitement est indiqué pour ce patient spécifique
+- Bénéfices attendus sur les symptômes rapportés
+- Surveillance recommandée
+
+⚠️ **VIGILANCE ET SUIVI**
+- Effets secondaires à surveiller
+- Signes d'alerte nécessitant une consultation urgente
+- Recommandations de suivi médical
+
+L'analyse doit être précise, personnalisée et sécuritaire, en tenant compte des caractéristiques spécifiques du patient.`;
+
+            try {
+                const diagnosis = await generateWithHederaAgent(prompt, context);
+                
+                // Save to history
+                const historyItem = {
+                    id: Date.now(),
+                    date: new Date().toISOString(),
+                    consultationType: consultationState.consultationType,
+                    symptoms: consultationState.responses.slice(0, 3).map(r => r.answer).join(', '),
+                    diagnosis: diagnosis,
+                    userInfo: userInfo,
+                    agent: 'Hedera AI'
+                };
+                
+                userHistory.unshift(historyItem);
+                saveHistory();
+                
+                diagnosisResult = diagnosis;
+                updateDiagnosisContent(diagnosis, true);
+                addMessage('monganga', '✅ Diagnostic complet généré par Hedera AI Agent ! Vous pouvez le consulter dans l\'onglet Diagnostic.');
+            } catch (error) {
+                addMessage('monganga', '❌ ' + error.message);
+            }
+        }
+
+        async function generateAutoDiagnosis() {
+            const symptoms = document.getElementById('autoSymptomsInput').value.trim();
+            const duration = document.getElementById('symptomDuration').value;
+            const intensity = document.getElementById('symptomIntensity').value;
+            const temperature = document.getElementById('bodyTemperature').value;
+            
+            if (!symptoms) {
+                showCustomAlert('Veuillez décrire vos symptômes en détail');
+                return;
+            }
+            
+            const userInfo = `Âge: ${userData.age} ans, Sexe: ${userData.gender}, Poids: ${userData.weight} kg`;
+            
+            const context = `DIAGNOSTIC AUTOMATIQUE AVEC AGENT HEDERA AI
+Patient: ${userData.name}
+${userInfo}
+Consultation: ${new Date().toLocaleDateString()}
+
+PARAMÈTRES CLINIQUES:
+- Durée des symptômes: ${duration || 'Non spécifiée'}
+- Intensité (1-10): ${intensity}
+- Température: ${temperature ? temperature + '°C' : 'Non mesurée'}`;
+
+            const prompt = `En tant qu'agent médical Hedera AI, analysez ces symptômes décrits et fournissez un diagnostic automatique complet :
+
+SYMPTÔMES PRÉSENTÉS :
+${symptoms}
+
+CARACTÉRISTIQUES DU PATIENT :
+- ${userInfo}
+- Durée: ${duration || 'Non spécifiée'}
+- Intensité: ${intensity}/10
+- Température: ${temperature ? temperature + '°C' : 'Non mesurée'}
+
+Veuillez générer une analyse médicale approfondie incluant :
+
+🎯 **ÉVALUATION INITIALE**
+- Urgence de la situation
+- Symptômes préoccupants identifiés
+- Besoin potentiel de consultation en présentiel
+
+🔬 **HYPOTHÈSES DIAGNOSTIQUES**
+- Pathologie(s) probable(s) avec score de probabilité
+- Investigations complémentaires recommandées
+- Diagnostics différentiels à éliminer
+
+💊 **PLAN THÉRAPEUTIQUE DÉTAILLÉ**
+Pour chaque médicament :
+- Dénomination précise et classe thérapeutique
+- Posologie personnalisée pour ${userData.age} ans / ${userData.weight} kg
+- Schéma posologique horaire détaillé
+- Durée de traitement optimale
+- Modalités d'administration
+
+📋 **PROTOCOLE DE SURVEILLANCE**
+- Paramètres à monitorer
+- Délai d'efficacité attendu
+- Critères d'échec thérapeutique
+- Consultation de contrôle recommandée
+
+⚠️ **CONSEILS SPÉCIFIQUES AU PATIENT**
+- Mesures hygiéno-diététiques
+- Signes d'aggravation à surveiller
+- Conduite à tenir en cas d'urgence
+
+Fournissez une analyse rigoureuse, sécuritaire et adaptée au profil du patient ${userData.name}.`;
+
+            try {
+                const diagnosis = await generateWithHederaAgent(prompt, context);
+                
+                // Save to history
+                const historyItem = {
+                    id: Date.now(),
+                    date: new Date().toISOString(),
+                    consultationType: 'auto',
+                    symptoms: symptoms.substring(0, 100) + (symptoms.length > 100 ? '...' : ''),
+                    diagnosis: diagnosis,
+                    userInfo: userInfo,
+                    agent: 'Hedera AI'
+                };
+                
+                userHistory.unshift(historyItem);
+                saveHistory();
+                
+                diagnosisResult = diagnosis;
+                updateDiagnosisContent(diagnosis, true);
+                showCustomAlert('Diagnostic automatique généré par Hedera AI Agent !', 'success');
+                
+                setTimeout(() => {
+                    showPage('diagnosis');
+                    updateActiveTab(document.querySelector('[data-page="diagnosis"]'));
+                }, 2000);
+            } catch (error) {
+                showCustomAlert(error.message);
+            }
+        }
+
+        function updateDiagnosisContent(content, isComplete) {
+            const diagnosisContent = document.getElementById('diagnosisContent');
+            
+            diagnosisContent.innerHTML = `
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+                            ${isComplete ? '✅ Diagnostic Complet - Hedera AI Agent' : '⏳ Analyse en cours par Hedera AI...'}
+                        </h3>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">
+                            Patient: ${userData.name} - ${new Date().toLocaleDateString()}
+                        </span>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900 p-4 rounded-lg mb-6 border border-blue-200 dark:border-blue-700">
+                        <div class="flex items-center mb-2">
+                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            <h4 class="text-blue-800 dark:text-blue-300 font-semibold">Analyse réalisée par Hedera AI Agent</h4>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-blue-700 dark:text-blue-300">
+                            <div><strong>Nom:</strong> ${userData.name}</div>
+                            <div><strong>Âge:</strong> ${userData.age} ans</div>
+                            <div><strong>Sexe:</strong> ${userData.gender}</div>
+                            <div><strong>Poids:</strong> ${userData.weight} kg</div>
+                        </div>
+                    </div>
+                    
+                    <div class="prose dark:prose-invert max-w-none">
+                        ${marked.parse(content)}
+                    </div>
+                </div>
+                
+                <div class="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                    <p class="text-yellow-800 dark:text-yellow-200 text-sm">
+                        <strong>⚠️ Avertissement Médical Important :</strong> Ce diagnostic est généré par un agent d'intelligence artificielle Hedera AI à des fins informatives seulement. Il ne remplace pas une consultation médicale professionnelle. Consultez toujours un médecin qualifié pour un diagnostic définitif et un traitement approprié. En cas d'urgence médicale, contactez immédiatement les services d'urgence.
+                    </p>
+                </div>
+                
+                ${isComplete ? `
+                <div class="mt-4 flex justify-center space-x-4">
+                    <button onclick="printDiagnosis()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors duration-200">
+                        📄 Télécharger PDF
+                    </button>
+                    <button onclick="resetConsultation()" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition-colors duration-200">
+                        🔄 Nouvelle consultation
+                    </button>
+                </div>
+                ` : ''}
+            `;
+        }
+
+        function loadHistory() {
+            document.addEventListener('DOMContentLoaded', function() {
+                const historyContent = document.getElementById('historyContent');
+                const emptyHistory = document.getElementById('emptyHistory');
+                const historyCount = document.getElementById('historyCount');
+                
+                if (userHistory.length === 0) {
+                    emptyHistory.classList.remove('hidden');
+                    historyContent.innerHTML = '';
+                    historyCount.textContent = '0';
+                    return;
+                }
+                
+                emptyHistory.classList.add('hidden');
+                historyCount.textContent = userHistory.length;
+                
+                let historyHTML = '';
+                
+                userHistory.forEach((item, index) => {
+                    const date = new Date(item.date).toLocaleDateString('fr-FR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    const consultationTypeText = item.consultationType === 'guided' ? 
+                        (translations[currentLanguage].guided || 'Guidée') : 
+                        (translations[currentLanguage].auto || 'Automatique');
+                    
+                    historyHTML += `
+                        <div class="history-item bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex-1">
+                                    <div class="flex items-center mb-2">
+                                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mr-3">
+                                            Diagnostic du ${date}
+                                        </h3>
+                                        <span class="bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 px-2 py-1 rounded text-xs font-medium">
+                                            Hedera AI
+                                        </span>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2 text-sm">
+                                        <span class="bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+                                            ${translations[currentLanguage].consultation_type || 'Type'}: ${consultationTypeText}
+                                        </span>
+                                        <span class="bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 px-2 py-1 rounded">
+                                            ${translations[currentLanguage].symptoms || 'Symptômes'}: ${item.symptoms}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button onclick="viewHistoryItem(${index})" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm">
+                                        ${translations[currentLanguage].view_details || 'Voir les détails'}
+                                    </button>
+                                    <button onclick="deleteHistoryItem(${index})" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm">
+                                        ${translations[currentLanguage].delete || 'Supprimer'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                historyContent.innerHTML = historyHTML;
+            });
+        }
+
+        function viewHistoryItem(index) {
+            const item = userHistory[index];
+            diagnosisResult = item.diagnosis;
+            updateDiagnosisContent(item.diagnosis, true);
+            showPage('diagnosis');
+            updateActiveTab(document.querySelector('[data-page="diagnosis"]'));
+        }
+
+        function deleteHistoryItem(index) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce diagnostic de l\'historique ?')) {
+                userHistory.splice(index, 1);
+                saveHistory();
+                loadHistory();
+                showCustomAlert('Diagnostic supprimé de l\'historique', 'success');
+            }
+        }
+
+        function saveHistory() {
+            if (userData.email) {
+                localStorage.setItem(`monganga_history_${userData.email}`, JSON.stringify(userHistory));
+            }
+        }
+
+        function printDiagnosis() {
+            const content = document.getElementById('diagnosisContent').innerHTML;
+            const blob = new Blob([`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Diagnostic MONGANGA - ${userData.name}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; color: #333; }
+                        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #003d52; padding-bottom: 20px; }
+                        .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin-top: 20px; border-radius: 5px; }
+                        h1, h2, h3 { color: #003d52; }
+                        .patient-info { background: linear-gradient(to right, #f0f9ff, #faf5ff); padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #dbeafe; }
+                        .medication { background-color: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #28a745; }
+                        .hedera-badge { background-color: #8b5cf6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>MONGANGA - Diagnostic Médical Personnalisé</h1>
+                        <p><strong>Date:</strong> ${new Date().toLocaleDateString()} - ${new Date().toLocaleTimeString()}</p>
+                        <p><strong>Agent IA:</strong> <span class="hedera-badge">Hedera AI Agent</span></p>
+                    </div>
+                    ${content}
+                </body>
+                </html>
+            `], { type: 'text/html' });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Diagnostic_MONGANGA_Hedera_${userData.name}_${new Date().toISOString().split('T')[0]}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function resetConsultation() {
+            consultationState = {
+                currentQuestion: 0,
+                questions: [],
+                responses: [],
+                symptomsCollected: {},
+                labTestsRequested: false,
+                labResultsUploaded: false,
+                readyForDiagnosis: false,
+                consultationType: null
+            };
+            
+            document.getElementById('guidedConsultation').classList.add('hidden');
+            document.getElementById('autoDiagnosisInterface').classList.add('hidden');
+            document.getElementById('consultationOptions').classList.remove('hidden');
+            document.getElementById('consultationProgress').classList.add('hidden');
+            document.getElementById('chatMessages').innerHTML = '';
+            document.getElementById('autoSymptomsInput').value = '';
+            document.getElementById('symptomDuration').value = '';
+            document.getElementById('symptomIntensity').value = '5';
+            document.getElementById('bodyTemperature').value = '';
+            document.getElementById('intensityValue').textContent = '5';
+            document.getElementById('uploadedFiles').innerHTML = '';
+            document.getElementById('currentQuestion').classList.add('hidden');
+            document.getElementById('quickResponses').classList.add('hidden');
+            document.getElementById('labUploadSection').classList.add('hidden');
+            
+            showPage('consultation');
+            updateActiveTab(document.querySelector('[data-page="consultation"]'));
+        }
+
+        function addMessage(sender, content) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = `max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                sender === 'user' 
+                    ? 'bg-primary text-white' 
+                    : 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white'
+            }`;
+            
+            if (sender === 'monganga') {
+                contentDiv.innerHTML = marked.parse(content);
+            } else {
+                contentDiv.textContent = content;
+            }
+            
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function handleFileUpload() {
+            const files = document.getElementById('fileInput').files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            const uploadedFilesDiv = document.getElementById('uploadedFiles');
+            
+            Array.from(files).forEach(file => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'flex items-center justify-between bg-green-100 dark:bg-green-900 p-3 rounded-lg border border-green-300 dark:border-green-700';
+                fileDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-sm text-green-800 dark:text-green-200">${file.name}</span>
+                    </div>
+                    <button class="text-red-500 hover:text-red-700" onclick="this.parentElement.remove()">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                `;
+                uploadedFilesDiv.appendChild(fileDiv);
+            });
+
+            if (files.length > 0) {
+                consultationState.labResultsUploaded = true;
+                const fileNames = Array.from(files).map(f => f.name).join(', ');
+                addMessage('monganga', `✅ Parfait ! J'ai reçu vos résultats d'analyses : ${fileNames}. L'agent Hedera AI va maintenant analyser ces résultats.`);
+                
+                setTimeout(() => {
+                    proceedToDiagnosis();
+                }, 2000);
+            }
+        }
+
+        function showLoadingModal() {
+            document.getElementById('loadingModal').classList.remove('hidden');
+        }
+
+        function hideLoadingModal() {
+            document.getElementById('loadingModal').classList.add('hidden');
+        }
+
+        function showCustomAlert(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4';
+            
+            const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+            
+            alertDiv.innerHTML = `
+                <div class="${bgColor} text-white px-6 py-4 rounded-lg shadow-lg">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>${message}</span>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        function logout() {
+            userData = {};
+            isLoggedIn = false;
+            diagnosisResult = null;
+            currentStep = 1;
+            userHistory = [];
+            
+            consultationState = {
+                currentQuestion: 0,
+                questions: [],
+                responses: [],
+                symptomsCollected: {},
+                labTestsRequested: false,
+                labResultsUploaded: false,
+                readyForDiagnosis: false,
+                consultationType: null
+            };
+
+            document.getElementById('consultationOptions').classList.remove('hidden');
+            document.getElementById('guidedConsultation').classList.add('hidden');
+            document.getElementById('autoDiagnosisInterface').classList.add('hidden');
+            document.getElementById('consultationProgress').classList.add('hidden');
+            document.getElementById('chatMessages').innerHTML = '';
+            document.getElementById('autoSymptomsInput').value = '';
+            document.getElementById('uploadedFiles').innerHTML = '';
+            
+            document.getElementById('diagnosisContent').innerHTML = `
+                <div class="text-center py-12">
+                    <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p class="text-gray-500 dark:text-gray-400">
+                        Aucun diagnostic disponible. Veuillez d'abord effectuer une consultation.
+                    </p>
+                </div>
+            `;
+
+            showWelcome();
+            updateLanguage();
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
