@@ -2,7 +2,7 @@
  Description 
  MONGANGA est une application médicale basée sur l'intelligence artificielle qui utilise la blockchain Hedera pour sécuriser et authentifier les diagnostics et consultations médicales. Cette solution est particulièrement cruciale dans les zones de conflit où l'accès aux soins médicaux est limité et où l'intégrité des données médicales doit être préservée malgré l'instabilité infrastructurelle. 
  pitch deck :https://docs.google.com/presentation/d/14cXE1hrQcd4sVtSICvMEd8cI0MLpngHl9nwKu2woDVU/edit?usp=sharing
- Vidéo youtube: 
+ Vidéo youtube:https://youtu.be/VRC1ODzzjO8?si=H7UugHeE4KrEtUXn
  Résumé de l'Intégration Hedera 
  Hedera Consensus Service (HCS) 
  Le HCS a été sélectionné pour stocker et valider les diagnostics médicaux et les consultations car il offre : 
