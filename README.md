@@ -3,7 +3,7 @@
  MONGANGA est une application médicale basée sur l'intelligence artificielle qui utilise la blockchain Hedera pour sécuriser et authentifier les diagnostics et consultations médicales. Cette solution est particulièrement cruciale dans les zones de conflit où l'accès aux soins médicaux est limité et où l'intégrité des données médicales doit être préservée malgré l'instabilité infrastructurelle. 
  pitch deck :https://docs.google.com/presentation/d/14cXE1hrQcd4sVtSICvMEd8cI0MLpngHl9nwKu2woDVU/edit?usp=sharing
  Vidéo youtube:https://youtu.be/VRC1ODzzjO8?si=H7UugHeE4KrEtUXn
- Résumé de l'Intégration Hedera 
+##Résumé de l'Intégration Hedera 
  Hedera Consensus Service (HCS) 
  Le HCS a été sélectionné pour stocker et valider les diagnostics médicaux et les consultations car il offre : 
  • 	 Un horodatage immuable et vérifiable des données médicales 
@@ -23,7 +23,7 @@
  • 	 Simplifier l'intégration des capacités d'IA avec les services Hedera 
  • 	 Offrir des plugins prêts à l'emploi pour les fonctionnalités courantes (comme coreQueriesPlugin) 
  Ces choix technologiques permettent à MONGANGA de fournir un service médical basé sur l'IA qui est à la fois sécurisé, transparent et conforme aux exigences de confidentialité des données médicales, tout en bénéficiant de la décentralisation et de l'immuabilité offertes par la technologie Hedera. 
- Types de Transactions 
+ ##Types de Transactions 
  1. 	 TopicCreateTransaction 
  2. 	 TopicMessageSubmitTransaction 
  Instructions de Déploiement 
@@ -35,7 +35,7 @@
  # Lance l'interface utilisateur 
  npm run dev 
  Le frontend sera accessible à l'adresse http://localhost:3000 
- Diagramme d'Architecture 
+ #Diagramme d'Architecture 
  Le schéma ci-dessous illustre le flux de données entre les différents composants de l'application MONGANGA 
  graph TD 
      subgraph "Navigateur de l'Utilisateur" 
@@ -66,7 +66,7 @@
      B -- 8. Récupère les messages (API REST) --> D2 
      D2 -- 9. Retourne l'historique --> B 
      B -- 10. Retourne l'historique au frontend --> A 
- IDs Hedera Déployés 
+ #IDs Hedera Déployés 
  • 	 HEDERA_USERS_TOPIC_ID = 0.0.7165678 
  • 	 HEDERA_CONSULTATIONS_TOPIC_ID = 0.0.7165679 
  • 	 HEDERA_DIAGNOSES_TOPIC_ID = 0.0.7165680
